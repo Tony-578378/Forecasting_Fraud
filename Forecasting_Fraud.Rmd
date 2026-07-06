@@ -1,0 +1,118 @@
+---
+title: "Forecasting_Fraud"
+output: html_document
+date: "2026-07-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+#Install it if you haven't.
+library(guardianapi)
+```
+
+```{r}
+#Enter your Guardian API key.
+gu_api_key()
+```
+
+```{r}
+#Find contents with required keywords and period.
+fraud <- gu_content(query = '"fraud" AND ("UK" OR "United Kingdom")', from_date = "1999-01-01",
+                            to_date = "2024-12-31")
+```
+
+```{r}
+#Find contents for comparing with forecasts.
+fraud1 <- gu_content(query = '"fraud" AND ("UK" OR "United Kingdom")', from_date = "2025-01-01",
+                            to_date = "2025-12-31")
+```
+
+```{r}
+#Inspect the articles obtained.
+tibble::glimpse(fraud)
+```
+
+# Inspect the contents:
+
+```{r}
+table(fraud$type)
+```
+
+```{r}
+table(fraud$pillar_name)
+```
+
+```{r}
+table(fraud$production_office)#All English-speaking countries so all contents are in English.
+```
+
+
+```{r}
+library(tidyverse)
+fraud %>%
+  filter(pillar_name == "Sport") %>%
+  select(web_title, web_publication_date) %>%
+  head(20)
+```
+
+```{r}
+library(tidyverse)
+fraud %>%
+  filter(pillar_name == "Arts") %>%
+  select(web_title, web_publication_date) %>%
+  head(20)
+```
+
+```{r}
+fraud %>%
+  filter(type == "liveblog") %>%
+  select(web_title, web_publication_date) %>%
+  head(20)
+```
+
+```{r}
+fraud %>%
+  filter(type == "article") %>%
+  select(web_title, web_publication_date) %>%
+  head(20)
+```
+
+```{r}
+#Collect only contents with type "article" and pillar name "Lifestyle"/"News"/"Opinion".
+fraud %>%
+  filter(type == "article" & pillar_name %in% c("Lifestyle","News","Opinion")) %>%
+  select(web_title, web_publication_date) %>%
+  head(20)
+```
+
+# Count the number of articles published each month
+
+```{r}
+library(dplyr)
+library(lubridate)
+
+monthly_fraud <- fraud %>%
+  filter(type == "article",
+         pillar_name %in% c("Lifestyle", "News", "Opinion")) %>%
+  mutate(month = floor_date(as.Date(web_publication_date), unit = "month")) %>%
+  count(month, name = "n_articles")
+
+monthly_fraud
+```
+
+```{r}
+# Also for the tested contents.
+monthly_fraud1 <- fraud1 %>%
+  filter(type == "article",
+         pillar_name %in% c("Lifestyle", "News", "Opinion")) %>%
+  mutate(month = floor_date(as.Date(web_publication_date), unit = "month")) %>%
+  count(month, name = "n_articles")
+
+monthly_fraud1
+```
+
