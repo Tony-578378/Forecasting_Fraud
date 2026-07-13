@@ -103,6 +103,11 @@ monthly_fraud <- fraud %>%
   count(month, name = "n_articles")
 
 monthly_fraud
+
+# Save to a csv
+write.csv(monthly_fraud,
+          file = "fraud_train.csv",
+          row.names = FALSE)
 ```
 
 ```{r}
@@ -114,5 +119,22 @@ monthly_fraud1 <- fraud1 %>%
   count(month, name = "n_articles")
 
 monthly_fraud1
+
+# Save to a csv
+write.csv(monthly_fraud1,
+          file = "fraud_test.csv",
+          row.names = FALSE)
+```
+
+# Import fraud and macroeconomic data (treat n_articles as fraud)
+
+```{r}
+# Import the training dataset
+train <- read.csv("fraud&macroeconomic_train.csv")
+View(train)
+
+# Import the testing dataset
+test <- read.csv("fraud&macroeconomic_test.csv")
+View(test)
 ```
 
