@@ -141,23 +141,6 @@ View(test)
 # Cross-correlation analysis to find the lead-lag relationships between variables
 
 ```{r}
-fraud <- train$fraud
-inflation <- train$CPIH
-unemployment <- train$unemployment
-interest <- train$interest_rate
-production <- train$index_of_production_and_sectors
-confidence <- train$composite_consumer_confidence
-```
-
-```{r}
-ccf(fraud, inflation)
-ccf(fraud, unemployment)
-ccf(fraud, interest)
-ccf(fraud, production)
-ccf(fraud, confidence)
-```
-
-```{r}
 # Test the stationarity of all time series.
 library(tseries)
 
@@ -175,6 +158,7 @@ ccf(fraud, diff(unemployment))
 ccf(fraud, diff(interest))
 ccf(fraud, diff(production))
 ccf(fraud, confidence)
+ccf(fraud, confidence, plot = FALSE)
 ```
 
 ```{r}
@@ -198,3 +182,36 @@ ccf(diff(interest), confidence)
 ```{r}
 ccf(diff(production), confidence)
 ```
+
+# Simple linear regression models to understand the relationships between variables
+
+```{r}
+summary(lm(fraud ~ inflation))
+summary(lm(fraud ~ unemployment))
+summary(lm(fraud ~ interest))
+summary(lm(fraud ~ production))
+summary(lm(fraud ~ confidence))
+```
+
+```{r}
+summary(lm(inflation ~ unemployment))
+summary(lm(inflation ~ interest))
+summary(lm(inflation ~ production))
+summary(lm(inflation ~ confidence))
+```
+
+```{r}
+summary(lm(unemployment ~ interest))
+summary(lm(unemployment ~ production))
+summary(lm(unemployment ~ confidence))
+```
+
+```{r}
+summary(lm(interest ~ production))
+summary(lm(interest ~ confidence))
+```
+
+```{r}
+summary(lm(production ~ confidence))
+```
+
