@@ -183,7 +183,7 @@ ccf(diff(interest), confidence)
 ccf(diff(production), confidence)
 ```
 
-# Simple linear regression models to understand the relationships between variables
+# Simple linear regression models to understand the linear relationships between variables
 
 ```{r}
 summary(lm(fraud ~ inflation))
