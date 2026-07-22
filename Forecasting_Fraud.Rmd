@@ -138,6 +138,16 @@ test <- read.csv("fraud&macroeconomic_test.csv")
 View(test)
 ```
 
+```{r}
+# Name each time series
+fraud <- train$fraud
+inflation <- train$CPIH
+unemployment <- train$unemployment
+interest <- train$interest_rate
+production <- train$index_of_production_and_industry_sectors
+confidence <- train$composite_consumer_confidence
+```
+
 # Cross-correlation analysis to find the lead-lag relationships between variables
 
 ```{r}
