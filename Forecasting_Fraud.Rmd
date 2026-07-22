@@ -51,7 +51,6 @@ table(fraud$pillar_name)
 table(fraud$production_office)#All English-speaking countries so all contents are in English.
 ```
 
-
 ```{r}
 library(tidyverse)
 fraud %>%
@@ -160,6 +159,13 @@ adf.test(unemployment)
 adf.test(interest)
 adf.test(production)
 adf.test(confidence)
+```
+
+```{r}
+# Take first order differencing to check if non-stationary time series become stationary.
+adf.test(diff(unemployment))
+adf.test(diff(interest))
+adf.test(diff(production))
 ```
 
 ```{r}
