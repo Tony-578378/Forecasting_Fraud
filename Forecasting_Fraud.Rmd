@@ -169,11 +169,17 @@ adf.test(diff(production))
 ```
 
 ```{r}
+#Print cross-correlation functions
 ccf(fraud, inflation)
 ccf(fraud, diff(unemployment))
 ccf(fraud, diff(interest))
 ccf(fraud, diff(production))
 ccf(fraud, confidence)
+#Print cross-correlation values
+ccf(fraud, inflation, plot = FALSE)
+ccf(fraud, diff(unemployment), plot = FALSE)
+ccf(fraud, diff(interest), plot = FALSE)
+ccf(fraud, diff(production), plot = FALSE)
 ccf(fraud, confidence, plot = FALSE)
 ```
 
@@ -182,21 +188,31 @@ ccf(inflation, diff(unemployment))
 ccf(inflation, diff(interest))
 ccf(inflation, diff(production))
 ccf(inflation, confidence)
+ccf(inflation, diff(unemployment), plot = FALSE)
+ccf(inflation, diff(interest), plot = FALSE)
+ccf(inflation, diff(production), plot = FALSE)
+ccf(inflation, confidence, plot = FALSE)
 ```
 
 ```{r}
 ccf(diff(unemployment), diff(interest))
 ccf(diff(unemployment), diff(production))
 ccf(diff(unemployment), confidence)
+ccf(diff(unemployment), diff(interest), plot = FALSE)
+ccf(diff(unemployment), diff(production), plot = FALSE)
+ccf(diff(unemployment), confidence, plot = FALSE)
 ```
 
 ```{r}
 ccf(diff(interest), diff(production))
 ccf(diff(interest), confidence)
+ccf(diff(interest), diff(production), plot = FALSE)
+ccf(diff(interest), confidence, plot = FALSE)
 ```
 
 ```{r}
 ccf(diff(production), confidence)
+ccf(diff(production), confidence, plot = FALSE)
 ```
 
 # Simple linear regression models to understand the linear relationships between variables
