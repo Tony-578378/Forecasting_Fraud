@@ -247,3 +247,70 @@ summary(lm(interest ~ confidence))
 summary(lm(production ~ confidence))
 ```
 
+# Build generalised additive models
+
+```{r}
+library(mgcv)
+gam1 <- gam(fraud ~ s(inflation) + s(unemployment) + s(interest) + s(production) + s(confidence))
+summary(gam1)
+```
+
+```{r}
+gam2 <- gam(fraud ~ s(inflation) + s(unemployment) + s(confidence))
+summary(gam2)
+```
+
+
+```{r}
+gam3 <- gam(fraud ~ s(unemployment) + s(interest) + s(production) + s(confidence))
+summary(gam3)
+```
+
+```{r}
+# Compare gam1 and gam3
+AIC(gam1, gam3)
+BIC(gam1, gam3)
+anova(gam1, gam3, test = "F")
+```
+
+```{r}
+gam4 <- gam(fraud ~ s(unemployment) + s(interest) + s(production) + s(confidence) + ti(unemployment, production) + ti(production, confidence) + ti(inflation, confidence))
+summary(gam4)
+```
+
+```{r}
+gam5 <- gam(fraud ~ unemployment + s(interest) + s(production) + confidence + ti(unemployment, production) + ti(production, confidence) + ti(inflation, confidence))
+summary(gam5)
+```
+
+```{r}
+gam6 <- gam(fraud ~ unemployment + s(interest) + s(production) + confidence + ti(unemployment, production) + ti(inflation, confidence))
+summary(gam6)
+```
+
+
+```{r}
+AIC(gam5, gam6)
+BIC(gam5, gam6)
+anova(gam5, gam6, test = "F")
+```
+
+```{r}
+gam7 <- gam(fraud ~ unemployment + s(interest) + production + confidence + ti(unemployment, production) + ti(inflation, confidence))
+summary(gam7)
+```
+
+```{r}
+gam8 <- gam(fraud ~s(interest) + production + confidence + ti(unemployment, production) + ti(inflation, confidence))
+summary(gam8)
+```
+
+```{r}
+AIC(gam8)
+BIC(gam8)
+```
+
+# Build Vector Autoregreesive Moving Average models
+
+
+
