@@ -274,6 +274,7 @@ anova(gam1, gam3, test = "F")
 ```
 
 ```{r}
+# Consider tensor product interactions
 gam4 <- gam(fraud ~ s(unemployment) + s(interest) + s(production) + s(confidence) + ti(unemployment, production) + ti(production, confidence) + ti(inflation, confidence))
 summary(gam4)
 ```
@@ -296,6 +297,7 @@ anova(gam5, gam6, test = "F")
 ```
 
 ```{r}
+# Consider using the linear relationship for production
 gam7 <- gam(fraud ~ unemployment + s(interest) + production + confidence + ti(unemployment, production) + ti(inflation, confidence))
 summary(gam7)
 ```
@@ -310,7 +312,410 @@ AIC(gam8)
 BIC(gam8)
 ```
 
-# Build Vector Autoregreesive Moving Average models
+# Build Vector Autoregressive Moving Average models
+
+```{r}
+# Build VARMA time series
+varma_data0 <- cbind(
+  fraud,
+  inflation,
+  unemployment,
+  interest,
+  production,
+  confidence
+)
+
+library(tseries)
+
+varma_ts0 <- ts(varma_data0, start = c(1999, 1), frequency = 12)#Starting from the 1st period of 1999, and there are 12 such periods in a year, i.e. 12 months.
+plot(varma_ts0)
+```
+
+```{r}
+#"Confidence" shows non-stationary trend, thus apply differencing.
+adf.test(diff(confidence))
+```
+
+
+```{r}
+varma_data1 <- cbind(
+  fraud[-1], #Since 1st-order differencing removes the first observation, repeat it for other time series.
+  inflation[-1],
+  diff(unemployment),
+  diff(interest),
+  diff(production),
+  diff(confidence)
+)
+
+varma_ts1 <- ts(varma_data1, start = c(1999, 2), frequency = 12)#Starting from the 2st period of 1999.
+plot(varma_ts1)
+```
+
+```{r}
+# Determine the autoregressive order p, using values from 1 to 30.
+library(vars)
+
+VARselect(varma_data1, lag.max = 30, type = "const")
+#p = 1 or 4 is suggested
+```
+
+```{r}
+install.packages("MTS")
+library(MTS)
+```
+
+```{r}
+# Fit VARMA.
+full10 <- VARMA(varma_data1, p = 1, q = 0)
+full11 <- VARMA(varma_data1, p = 1, q = 1)
+full12 <- VARMA(varma_data1, p = 1, q = 2)
+full13 <- VARMA(varma_data1, p = 1, q = 3)
+```
+
+```{r}
+full40 <- VARMA(varma_data1, p = 4, q = 0)
+full41 <- VARMA(varma_data1, p = 4, q = 1)
+full42 <- VARMA(varma_data1, p = 4, q = 2)
+full43 <- VARMA(varma_data1, p = 4, q = 3)
+```
+
+```{r}
+c(full10$aic, full10$bic)
+c(full11$aic, full11$bic)
+c(full12$aic, full12$bic)
+c(full13$aic, full13$bic)
+c(full40$aic, full40$bic)
+c(full41$aic, full41$bic)
+c(full42$aic, full42$bic)
+c(full43$aic, full43$bic)
+# Select full10 and full 40.
+```
+
+```{r}
+# Use only macroeconomic indicators with significant cross-correlations with fraud.
+varma_data2 <- cbind(
+  fraud[-1], #Since 1st-order differencing removes the first observation, repeat it for other time series.
+  inflation[-1],
+  diff(unemployment),
+  diff(confidence)
+)
+```
+
+```{r}
+VARselect(varma_data2, lag.max = 30, type = "const")
+```
+
+```{r}
+part10 <- VARMA(varma_data2, p = 1, q = 0)
+part11 <- VARMA(varma_data2, p = 1, q = 1)
+part12 <- VARMA(varma_data2, p = 1, q = 2)
+part13 <- VARMA(varma_data2, p = 1, q = 3)
+```
+
+```{r}
+part20 <- VARMA(varma_data2, p = 2, q = 0)
+part21 <- VARMA(varma_data2, p = 2, q = 1)
+part22 <- VARMA(varma_data2, p = 2, q = 2)
+part23 <- VARMA(varma_data2, p = 2, q = 3)
+```
+
+```{r}
+part40 <- VARMA(varma_data2, p = 4, q = 0)
+part41 <- VARMA(varma_data2, p = 4, q = 1)
+part42 <- VARMA(varma_data2, p = 4, q = 2)
+part43 <- VARMA(varma_data2, p = 4, q = 3)
+```
+
+```{r}
+c(part10$aic, part10$bic)
+c(part11$aic, part11$bic)
+c(part12$aic, part12$bic)
+c(part13$aic, part13$bic)
+c(part20$aic, part20$bic)
+c(part21$aic, part21$bic)
+c(part22$aic, part22$bic)
+c(part23$aic, part23$bic)
+c(part40$aic, part40$bic)
+c(part41$aic, part41$bic)
+c(part42$aic, part42$bic)
+c(part43$aic, part43$bic)
+#Select part40 and part11.
+```
+
+```{r}
+# Name variables in the test dataset
+fraud_test <- test$fraud
+inflation_test <- test$CPIH
+unemployment_test <- test$unemployment
+interest_test <- test$interest_rate
+production_test <- test$index_of_production_and_industry_sectors
+confidence_test <- test$composite_consumer_confidence
+```
+
+```{r}
+# Forecasting
+pred1 <- VARMApred(
+  full10,
+  h = 12
+)
+```
+
+```{r}
+# Convert differences to their original values, starting from the last value of the training dataset.
+pred1$pred[, 3] <- unemployment[length(unemployment)] + cumsum(pred1$pred[, 3])
+pred1$pred[, 4] <- interest[length(interest)] + cumsum(pred1$pred[, 4])
+pred1$pred[, 5] <- production[length(production)] + cumsum(pred1$pred[, 5])
+pred1$pred[, 6] <- confidence[length(confidence)] + cumsum(pred1$pred[, 6])
+pred1$pred[, 3]
+pred1$pred[, 4]
+pred1$pred[, 5]
+pred1$pred[, 6]
+```
+
+```{r}
+install.packages("forecast")
+library(forecast)
+```
+
+```{r}
+# Forecasting accuracy assessment
+accuracy(object = pred1$pred[, 1], x = fraud_test)
+errors <- fraud_test - pred1$pred[, 1]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(fraud)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred1$pred[, 2], x = inflation_test)
+errors <- inflation_test - pred1$pred[, 2]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(inflation)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred1$pred[, 3], x = unemployment_test)
+errors <- unemployment_test - pred1$pred[, 3]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(unemployment)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred1$pred[, 4], x = interest_test)
+errors <- interest_test - pred1$pred[, 4]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(interest)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred1$pred[, 5], x = production_test)
+errors <- production_test - pred1$pred[, 5]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(production)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred1$pred[, 6], x = confidence_test)
+errors <- confidence_test - pred1$pred[, 6]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(confidence)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+```
+
+```{r}
+pred2 <- VARMApred(
+  full40,
+  h = 12
+)
+```
+
+```{r}
+pred2$pred[, 3] <- unemployment[length(unemployment)] + cumsum(pred2$pred[, 3])
+pred2$pred[, 4] <- interest[length(interest)] + cumsum(pred2$pred[, 4])
+pred2$pred[, 5] <- production[length(production)] + cumsum(pred2$pred[, 5])
+pred2$pred[, 6] <- confidence[length(confidence)] + cumsum(pred2$pred[, 6])
+pred2$pred[, 3]
+pred2$pred[, 4]
+pred2$pred[, 5]
+pred2$pred[, 6]
+```
+
+```{r}
+accuracy(object = pred2$pred[, 1], x = fraud_test)
+errors <- fraud_test - pred2$pred[, 1]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(fraud)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred2$pred[, 2], x = inflation_test)
+errors <- inflation_test - pred2$pred[, 2]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(inflation)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred2$pred[, 3], x = unemployment_test)
+errors <- unemployment_test - pred2$pred[, 3]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(unemployment)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred2$pred[, 4], x = interest_test)
+errors <- interest_test - pred2$pred[, 4]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(interest)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred2$pred[, 5], x = production_test)
+errors <- production_test - pred2$pred[, 5]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(production)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred2$pred[, 6], x = confidence_test)
+errors <- confidence_test - pred2$pred[, 6]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(confidence)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+```
+
+```{r}
+pred3 <- VARMApred(
+  part40,
+  h = 12
+)
+```
+
+```{r}
+pred3$pred[, 3] <- unemployment[length(unemployment)] + cumsum(pred3$pred[, 3])
+pred3$pred[, 4] <- confidence[length(confidence)] + cumsum(pred3$pred[, 4])
+pred3$pred[, 3]
+pred3$pred[, 4]
+```
+
+```{r}
+accuracy(object = pred3$pred[, 1], x = fraud_test)
+errors <- fraud_test - pred3$pred[, 1]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(fraud)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred3$pred[, 2], x = inflation_test)
+errors <- inflation_test - pred3$pred[, 2]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(inflation)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred3$pred[, 3], x = unemployment_test)
+errors <- unemployment_test - pred3$pred[, 3]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(unemployment)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred3$pred[, 4], x = confidence_test)
+errors <- confidence_test - pred3$pred[, 4]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(confidence)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+```
+
+```{r}
+pred4 <- VARMApred(
+  part11,
+  h = 12
+)
+```
+
+```{r}
+pred4$pred[, 3] <- unemployment[length(unemployment)] + cumsum(pred4$pred[, 3])
+pred4$pred[, 4] <- confidence[length(confidence)] + cumsum(pred4$pred[, 4])
+pred4$pred[, 3]
+pred4$pred[, 4]
+```
+
+```{r}
+accuracy(object = pred4$pred[, 1], x = fraud_test)
+errors <- fraud_test - pred4$pred[, 1]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(fraud)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred4$pred[, 2], x = inflation_test)
+errors <- inflation_test - pred4$pred[, 2]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(inflation)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred4$pred[, 3], x = unemployment_test)
+errors <- unemployment_test - pred4$pred[, 3]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(unemployment)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred4$pred[, 4], x = confidence_test)
+errors <- confidence_test - pred4$pred[, 4]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(confidence)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+```
+
+# Build the Extreme Gradient Boosting model
+
+
+
 
 
 
