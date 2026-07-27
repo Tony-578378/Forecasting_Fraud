@@ -147,6 +147,16 @@ production <- train$index_of_production_and_industry_sectors
 confidence <- train$composite_consumer_confidence
 ```
 
+```{r}
+# Name variables in the test dataset
+fraud_test <- test$fraud
+inflation_test <- test$CPIH
+unemployment_test <- test$unemployment
+interest_test <- test$interest_rate
+production_test <- test$index_of_production_and_industry_sectors
+confidence_test <- test$composite_consumer_confidence
+```
+
 # Cross-correlation analysis to find the lead-lag relationships between variables
 
 ```{r}
@@ -443,16 +453,6 @@ c(part43$aic, part43$bic)
 ```
 
 ```{r}
-# Name variables in the test dataset
-fraud_test <- test$fraud
-inflation_test <- test$CPIH
-unemployment_test <- test$unemployment
-interest_test <- test$interest_rate
-production_test <- test$index_of_production_and_industry_sectors
-confidence_test <- test$composite_consumer_confidence
-```
-
-```{r}
 # Forecasting
 pred1 <- VARMApred(
   full10,
@@ -714,8 +714,84 @@ ACF1
 
 # Build the Extreme Gradient Boosting model
 
+```{r}
+install.packages("xgboost")
+library(xgboost)
+```
+
+```{r}
+# Prepare the training dataset 
+train$month <- as.Date(train$month) #Treat months as date variables
+
+library(dplyr)
+
+train_data <- train %>%
+  arrange(month) %>%
+  mutate(
+    inflation_lag1 = lag(inflation, 1), # inflation means CPIH
+    inflation_lag4 = lag(inflation, 4),
+    unemployment_lag1 = lag(unemployment, 1),
+    unemployment_lag21 = lag(unemployment, 21),
+    interest_lag1 = lag(interest, 1), # interest means interest_rate
+    production_lag1 = lag(production, 1), # production means index_of_production_and_industry_sectors
+    confidence_lag1 = lag(confidence, 1) # confidence means composite_consumer_confidence
+  ) %>%
+  na.omit()      #Clean all rows containing NAs produced by lagging.
+
+head(train_data) #Inspect the training dataset
+```
+
+```{r}
+# Select the predictor columns
+predictor_names <- c(
+  "CPIH",
+  "unemployment",
+  "interest_rate",
+  "index_of_production_and_industry_sectors",
+  "composite_consumer_confidence",
+  "inflation_lag1",
+  "inflation_lag4",
+  "unemployment_lag1",
+  "unemployment_lag21",
+  "interest_lag1",
+  "production_lag1",
+  "confidence_lag1"
+)
+```
+
+```{r}
+# Create the predictor matrix and the response variable
+X_train <- as.matrix(train_data[, predictor_names])
+y_train <- train_data$fraud
+```
+
+```{r}
+# Construct xgb.DMatrix object
+dtrain <- xgb.DMatrix(
+  data = X_train,
+  label = y_train
+)
+```
+
+```{r}
+# Train the model
+xgb_model <- xgb.train(
+  params = xgb.params(objective = "reg:squarederror"), #reggression objective with squared loss
+  data = dtrain,
+  nrounds = 1000, #maximum of 1000 boosting iterations
+  verbose = 1 #it will print information about performance
+)
+```
+
+# Forecasting
 
 
+
+```{r}
+# Find permutation feature importance of variables in the XGBoost model for its predictive power
+install.packages("iml")
+library(iml)
+```
 
 
 
