@@ -785,13 +785,181 @@ xgb_model <- xgb.train(
 
 # Forecasting
 
-
+```{r}
+# Investigate whether there are seasonal patterns in the macroeconomic indicators
+acf(inflation, lag.max = 50)
+acf(unemployment, lag.max = 50)
+acf(interest, lag.max = 50)
+acf(production, lag.max = 50)
+acf(confidence, lag.max = 50)
+```
 
 ```{r}
-# Find permutation feature importance of variables in the XGBoost model for its predictive power
+install.packages("forecast")
+library(forecast)
+```
+
+```{r}
+# Determine the difference order, d
+ndiffs(inflation)
+ndiffs(unemployment)
+ndiffs(interest)
+ndiffs(production)
+ndiffs(confidence)
+```
+
+```{r}
+# PACF for determining p, ACF for q, of ARIMA
+acf(diff(inflation))
+pacf(diff(inflation))
+acf(diff(unemployment))
+pacf(diff(unemployment))
+acf(diff(interest))
+pacf(diff(interest))
+acf(diff(production))
+pacf(diff(production))
+acf(diff(confidence))
+pacf(diff(confidence))
+```
+
+```{r}
+fit11 <- arima(inflation, order = c(3,1,0))
+fit12 <- arima(inflation, order = c(3,1,1))
+fit13 <- arima(inflation, order = c(3,1,2))
+fit14 <- arima(inflation, order = c(4,1,0))
+fit15 <- arima(inflation, order = c(4,1,1))
+fit16 <- arima(inflation, order = c(4,1,2))
+AIC(fit11, fit12, fit13, fit14, fit15, fit16)
+BIC(fit11, fit12, fit13, fit14, fit15, fit16)#fit13 is used
+```
+
+```{r}
+fit21 <- arima(unemployment, order = c(2,1,0))
+fit22 <- arima(unemployment, order = c(2,1,1))
+fit23 <- arima(unemployment, order = c(2,1,2))
+AIC(fit21, fit22, fit23)
+BIC(fit21, fit22, fit23)#fit21 is used
+```
+
+```{r}
+fit31 <- arima(interest, order = c(2,1,1))
+fit32 <- arima(interest, order = c(3,1,1))
+AIC(fit31, fit32)#It suggests fit31, but the difference is very small.
+BIC(fit31, fit32)#It suggests fit32, and the difference is more significant. Also there is a spike at lag 3, so fit32 is used.
+```
+
+```{r}
+fit41 <- arima(production, order = c(2,1,2))
+fit42 <- arima(production, order = c(2,1,3))
+fit43 <- arima(production, order = c(3,1,2))
+fit44 <- arima(production, order = c(3,1,3))
+AIC(fit41, fit42, fit43, fit44)#It suggests fit43, but very close to fit41.
+BIC(fit41, fit42, fit43, fit44)#It suggests fit41, and fairly much lower than fit43. So fit41 is chosen.
+```
+
+```{r}
+fit51 <- arima(confidence, order = c(1,1,0))
+#fit52 <- arima(confidence, order = c(1,1,1)) #fail to fit
+fit53 <- arima(confidence, order = c(2,1,0))
+fit54 <- arima(confidence, order = c(2,1,1))
+AIC(fit51, fit53, fit54)
+BIC(fit51, fit53, fit54)#fit51 is used
+```
+
+```{r}
+pred_inflation <- predict(fit13, n.ahead = 12)
+pred_inflation$pred
+
+pred_unemployment <- predict(fit21, n.ahead = 12)
+pred_unemployment$pred
+
+pred_interest <- predict(fit32, n.ahead = 12)
+pred_interest$pred
+
+pred_production <- predict(fit41, n.ahead = 12)
+pred_production$pred
+
+pred_confidence <- predict(fit51, n.ahead = 12)
+pred_confidence$pred
+```
+
+```{r}
+#Prepare the test data for GAM and predict fraud.
+future_data_gam <- data.frame(
+  inflation = c(3.517067,3.555545,3.606053,3.657496,3.701093,3.731660,3.747602,3.750231,3.742752,3.729203,3.713542,3.699003),
+  unemployment = c(4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4),
+  interest_rate = c(4.443286,4.475055,4.484013,4.481471,4.483958,4.486428,4.486176,4.486018,4.486403,4.486491,4.486415,4.486438),
+  production = c(98.17661,98.25140,98.25156,98.23327,98.21953,98.21373,98.21277,98.21348,98.21424,98.21464,98.21475,98.21474),
+  confidence = c(-12.02431,-12.02372,-12.02374,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373)
+)
+
+fraud_forecast_gam <- predict(gam8, newdata = future_data_gam)
+fraud_forecast_gam
+```
+
+```{r}
+#Prepare the test data for XGBoost and predict fraud.
+future_data_xgb <- data.frame(
+  CPIH = c(3.517067,3.555545,3.606053,3.657496,3.701093,3.731660,3.747602,3.750231,3.742752,3.729203,3.713542,3.699003),
+  unemployment = c(4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4),
+  interest_rate = c(4.443286,4.475055,4.484013,4.481471,4.483958,4.486428,4.486176,4.486018,4.486403,4.486491,4.486415,4.486438),
+  index_of_production_and_industry_sectors = c(98.17661,98.25140,98.25156,98.23327,98.21953,98.21373,98.21277,98.21348,98.21424,98.21464,98.21475,98.21474),
+  composite_consumer_confidence = c(-12.02431,-12.02372,-12.02374,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373),
+  inflation_lag1 = c(3.5,3.517067,3.555545,3.606053,3.657496,3.701093,3.731660,3.747602,3.750231,3.742752,3.729203,3.713542),
+  inflation_lag4 = c(2.6,3.2,3.5,3.5,3.517067,3.555545,3.606053,3.657496,3.701093,3.731660,3.747602,3.750231),
+  unemployment_lag1 = c(4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4),
+  unemployment_lag21 = c(4.0,4.2,4.3,4.3,4.1,4.0,4.0,3.9,4.1,4.2,4.3,4.4),
+  interest_lag1 = c(4.4345,4.443286,4.475055,4.484013,4.481471,4.483958,4.486428,4.486176,4.486018,4.486403,4.486491,4.486415),
+  production_lag1 = c(97.9496,98.17661,98.25140,98.25156,98.23327,98.21953,98.21373,98.21277,98.21348,98.21424,98.21464,98.21475),
+  confidence_lag1 = c(-12.00,-12.02431,-12.02372,-12.02374,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373)
+)
+
+future_matrix <- xgb.DMatrix(as.matrix(future_data_xgb))
+
+fraud_forecast_xgb <- predict(xgb_model,
+                          future_matrix)
+fraud_forecast_xgb
+```
+
+# Permutation feature importance of the XGBoost model
+
+```{r}
 install.packages("iml")
 library(iml)
 ```
+
+```{r}
+predictor <- Predictor$new(
+    model = xgb_model,
+    data = future_data_xgb,
+    y = fraud_test,
+    predict.function = function(model, newdata)
+        predict(model, newdata = xgb.DMatrix(as.matrix(newdata)))
+)
+
+set.seed(123) #Set the random state so the results are reproducible
+
+perm_imp <- FeatureImp$new(
+    predictor,
+    loss = "rmse"
+)
+
+plot(perm_imp)
+
+perm_imp$results #numerical results
+```
+
+# Model evaluation (for GAM and XGBoost)
+
+
+
+
+
+
+
+
+
+
 
 
 
