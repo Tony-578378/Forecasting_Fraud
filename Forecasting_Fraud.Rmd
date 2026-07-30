@@ -135,6 +135,8 @@ View(train)
 # Import the testing dataset
 test <- read.csv("fraud&macroeconomic_test.csv")
 View(test)
+
+#The volume of content fetched by the Guardian API may vary across time, so please subject to these two datasets in this project.
 ```
 
 ```{r}
@@ -477,6 +479,8 @@ install.packages("forecast")
 library(forecast)
 ```
 
+Note that $\mathrm{MASE} = \frac{\frac{1}{h}\displaystyle\sum_{t=1}^{h}\left|y_t-\hat{y}_t\right|}{\frac{1}{n-1}\displaystyle\sum_{t=2}^{n}\left|y_t-y_{t-1}\right|}$.
+
 ```{r}
 # Forecasting accuracy assessment
 accuracy(object = pred1$pred[, 1], x = fraud_test)
@@ -786,12 +790,9 @@ xgb_model <- xgb.train(
 # Forecasting
 
 ```{r}
-# Investigate whether there are seasonal patterns in the macroeconomic indicators
+# Investigate whether there are seasonal patterns in the macroeconomic indicators that will be fitted in a univariate AR(I)MA or SAR(I)MA model.
 acf(inflation, lag.max = 50)
-acf(unemployment, lag.max = 50)
 acf(interest, lag.max = 50)
-acf(production, lag.max = 50)
-acf(confidence, lag.max = 50)
 ```
 
 ```{r}
@@ -802,24 +803,15 @@ library(forecast)
 ```{r}
 # Determine the difference order, d
 ndiffs(inflation)
-ndiffs(unemployment)
 ndiffs(interest)
-ndiffs(production)
-ndiffs(confidence)
 ```
 
 ```{r}
 # PACF for determining p, ACF for q, of ARIMA
 acf(diff(inflation))
 pacf(diff(inflation))
-acf(diff(unemployment))
-pacf(diff(unemployment))
 acf(diff(interest))
 pacf(diff(interest))
-acf(diff(production))
-pacf(diff(production))
-acf(diff(confidence))
-pacf(diff(confidence))
 ```
 
 ```{r}
@@ -834,63 +826,170 @@ BIC(fit11, fit12, fit13, fit14, fit15, fit16)#fit13 is used
 ```
 
 ```{r}
-fit21 <- arima(unemployment, order = c(2,1,0))
-fit22 <- arima(unemployment, order = c(2,1,1))
-fit23 <- arima(unemployment, order = c(2,1,2))
-AIC(fit21, fit22, fit23)
-BIC(fit21, fit22, fit23)#fit21 is used
-```
-
-```{r}
-fit31 <- arima(interest, order = c(2,1,1))
-fit32 <- arima(interest, order = c(3,1,1))
-AIC(fit31, fit32)#It suggests fit31, but the difference is very small.
-BIC(fit31, fit32)#It suggests fit32, and the difference is more significant. Also there is a spike at lag 3, so fit32 is used.
-```
-
-```{r}
-fit41 <- arima(production, order = c(2,1,2))
-fit42 <- arima(production, order = c(2,1,3))
-fit43 <- arima(production, order = c(3,1,2))
-fit44 <- arima(production, order = c(3,1,3))
-AIC(fit41, fit42, fit43, fit44)#It suggests fit43, but very close to fit41.
-BIC(fit41, fit42, fit43, fit44)#It suggests fit41, and fairly much lower than fit43. So fit41 is chosen.
-```
-
-```{r}
-fit51 <- arima(confidence, order = c(1,1,0))
-#fit52 <- arima(confidence, order = c(1,1,1)) #fail to fit
-fit53 <- arima(confidence, order = c(2,1,0))
-fit54 <- arima(confidence, order = c(2,1,1))
-AIC(fit51, fit53, fit54)
-BIC(fit51, fit53, fit54)#fit51 is used
+fit21 <- arima(interest, order = c(2,1,1))
+fit22 <- arima(interest, order = c(3,1,1))
+AIC(fit21, fit22)#It suggests fit21, but the difference is very small.
+BIC(fit21, fit22)#It suggests fit22, and the difference is more significant. Also there is a spike at lag 3, so fit22 is used.
 ```
 
 ```{r}
 pred_inflation <- predict(fit13, n.ahead = 12)
 pred_inflation$pred
 
-pred_unemployment <- predict(fit21, n.ahead = 12)
-pred_unemployment$pred
-
-pred_interest <- predict(fit32, n.ahead = 12)
+pred_interest <- predict(fit22, n.ahead = 12)
 pred_interest$pred
+```
 
-pred_production <- predict(fit41, n.ahead = 12)
-pred_production$pred
+```{r}
+#Build the VARMA model for the other 3 macroeconomic indicators.
+varma_data2 <- cbind(
+  diff(unemployment),
+  diff(production),
+  diff(confidence)
+)
+```
 
-pred_confidence <- predict(fit51, n.ahead = 12)
-pred_confidence$pred
+```{r}
+library(vars)
+
+VARselect(varma_data2, lag.max = 30, type = "const")#Try p = 1,2,8
+```
+
+```{r}
+fit30 <- VARMA(varma_data2, p = 1, q = 0)
+fit31 <- VARMA(varma_data2, p = 1, q = 1)
+fit32 <- VARMA(varma_data2, p = 1, q = 2)
+#fit34 <- VARMA(varma_data2, p = 1, q = 3) #fail to fit
+```
+
+```{r}
+fit40 <- VARMA(varma_data2, p = 2, q = 0)
+fit41 <- VARMA(varma_data2, p = 2, q = 1)
+fit42 <- VARMA(varma_data2, p = 2, q = 2)
+fit43 <- VARMA(varma_data2, p = 2, q = 3)
+```
+
+```{r}
+fit50 <- VARMA(varma_data2, p = 8, q = 0)
+fit51 <- VARMA(varma_data2, p = 8, q = 1)
+fit52 <- VARMA(varma_data2, p = 8, q = 2)
+fit53 <- VARMA(varma_data2, p = 8, q = 3)
+```
+
+```{r}
+c(fit30$aic, fit30$bic)
+c(fit31$aic, fit31$bic)
+c(fit32$aic, fit32$bic)
+c(fit40$aic, fit40$bic)
+c(fit41$aic, fit41$bic)
+c(fit42$aic, fit42$bic)
+c(fit43$aic, fit43$bic)
+c(fit50$aic, fit50$bic)
+c(fit51$aic, fit51$bic)
+c(fit52$aic, fit52$bic)
+c(fit53$aic, fit53$bic) #fit31 and fit41 are chosen
+```
+
+```{r}
+# Forecasting
+pred5 <- VARMApred(
+  fit31,
+  h = 12
+)
+```
+
+```{r}
+pred5$pred[, 1] <- unemployment[length(unemployment)] + cumsum(pred5$pred[, 1])
+pred5$pred[, 2] <- production[length(production)] + cumsum(pred5$pred[, 2])
+pred5$pred[, 3] <- confidence[length(confidence)] + cumsum(pred5$pred[, 3])
+pred5$pred[, 1]
+pred5$pred[, 2]
+pred5$pred[, 3]
+```
+
+```{r}
+accuracy(object = pred5$pred[, 1], x = unemployment_test)
+errors <- unemployment_test - pred5$pred[, 1]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(unemployment)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred5$pred[, 2], x = production_test)
+errors <- production_test - pred5$pred[, 2]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(production)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred5$pred[, 3], x = confidence_test)
+errors <- confidence_test - pred5$pred[, 3]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(confidence)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+```
+
+```{r}
+pred6 <- VARMApred(
+  fit41,
+  h = 12
+)
+```
+
+```{r}
+pred6$pred[, 1] <- unemployment[length(unemployment)] + cumsum(pred6$pred[, 1])
+pred6$pred[, 2] <- production[length(production)] + cumsum(pred6$pred[, 2])
+pred6$pred[, 3] <- confidence[length(confidence)] + cumsum(pred6$pred[, 3])
+pred6$pred[, 1]
+pred6$pred[, 2]
+pred6$pred[, 3]
+```
+
+```{r}
+accuracy(object = pred6$pred[, 1], x = unemployment_test)
+errors <- unemployment_test - pred6$pred[, 1]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(unemployment)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred6$pred[, 2], x = production_test)
+errors <- production_test - pred6$pred[, 2]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(production)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+
+accuracy(object = pred6$pred[, 3], x = confidence_test)
+errors <- confidence_test - pred6$pred[, 3]
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(confidence)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+#fit41 (VARMA(2, 1)) is preferred than fit31 (VARMA(1, 1))
 ```
 
 ```{r}
 #Prepare the test data for GAM and predict fraud.
 future_data_gam <- data.frame(
   inflation = c(3.517067,3.555545,3.606053,3.657496,3.701093,3.731660,3.747602,3.750231,3.742752,3.729203,3.713542,3.699003),
-  unemployment = c(4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4),
-  interest_rate = c(4.443286,4.475055,4.484013,4.481471,4.483958,4.486428,4.486176,4.486018,4.486403,4.486491,4.486415,4.486438),
-  production = c(98.17661,98.25140,98.25156,98.23327,98.21953,98.21373,98.21277,98.21348,98.21424,98.21464,98.21475,98.21474),
-  confidence = c(-12.02431,-12.02372,-12.02374,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373)
+  unemployment = c(4.425784,4.444627,4.458527,4.470378,4.480064,4.488074,4.494556,4.499670,4.503557,4.506347,4.508163,4.509115),
+  interest = c(4.443286,4.475055,4.484013,4.481471,4.483958,4.486428,4.486176,4.486018,4.486403,4.486491,4.486415,4.486438),
+  production = c(98.15264,98.16309,98.15955,98.14028,98.11178,98.07649,98.03693,97.99552,97.95404,97.91370,97.87530,97.83932),
+  confidence = c(-12.17586,-12.12319,-12.08893,-12.03765,-11.97719,-11.91549,-11.85512,-11.79842,-11.74654,-11.70011,-11.65936,-11.62426)
 )
 
 fraud_forecast_gam <- predict(gam8, newdata = future_data_gam)
@@ -901,17 +1000,17 @@ fraud_forecast_gam
 #Prepare the test data for XGBoost and predict fraud.
 future_data_xgb <- data.frame(
   CPIH = c(3.517067,3.555545,3.606053,3.657496,3.701093,3.731660,3.747602,3.750231,3.742752,3.729203,3.713542,3.699003),
-  unemployment = c(4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4),
+  unemployment = c(4.425784,4.444627,4.458527,4.470378,4.480064,4.488074,4.494556,4.499670,4.503557,4.506347,4.508163,4.509115),
   interest_rate = c(4.443286,4.475055,4.484013,4.481471,4.483958,4.486428,4.486176,4.486018,4.486403,4.486491,4.486415,4.486438),
-  index_of_production_and_industry_sectors = c(98.17661,98.25140,98.25156,98.23327,98.21953,98.21373,98.21277,98.21348,98.21424,98.21464,98.21475,98.21474),
-  composite_consumer_confidence = c(-12.02431,-12.02372,-12.02374,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373),
+  index_of_production_and_industry_sectors = c(98.15264,98.16309,98.15955,98.14028,98.11178,98.07649,98.03693,97.99552,97.95404,97.91370,97.87530,97.83932),
+  composite_consumer_confidence = c(-12.17586,-12.12319,-12.08893,-12.03765,-11.97719,-11.91549,-11.85512,-11.79842,-11.74654,-11.70011,-11.65936,-11.62426),
   inflation_lag1 = c(3.5,3.517067,3.555545,3.606053,3.657496,3.701093,3.731660,3.747602,3.750231,3.742752,3.729203,3.713542),
   inflation_lag4 = c(2.6,3.2,3.5,3.5,3.517067,3.555545,3.606053,3.657496,3.701093,3.731660,3.747602,3.750231),
-  unemployment_lag1 = c(4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4),
+  unemployment_lag1 = c(4.4,4.425784,4.444627,4.458527,4.470378,4.480064,4.488074,4.494556,4.499670,4.503557,4.506347,4.508163),
   unemployment_lag21 = c(4.0,4.2,4.3,4.3,4.1,4.0,4.0,3.9,4.1,4.2,4.3,4.4),
   interest_lag1 = c(4.4345,4.443286,4.475055,4.484013,4.481471,4.483958,4.486428,4.486176,4.486018,4.486403,4.486491,4.486415),
-  production_lag1 = c(97.9496,98.17661,98.25140,98.25156,98.23327,98.21953,98.21373,98.21277,98.21348,98.21424,98.21464,98.21475),
-  confidence_lag1 = c(-12.00,-12.02431,-12.02372,-12.02374,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373,-12.02373)
+  production_lag1 = c(97.9496,98.15264,98.16309,98.15955,98.14028,98.11178,98.07649,98.03693,97.99552,97.95404,97.91370,97.87530),
+  confidence_lag1 = c(-12.00,-12.17586,-12.12319,-12.08893,-12.03765,-11.97719,-11.91549,-11.85512,-11.79842,-11.74654,-11.70011,-11.65936)
 )
 
 future_matrix <- xgb.DMatrix(as.matrix(future_data_xgb))
@@ -951,14 +1050,116 @@ perm_imp$results #numerical results
 
 # Model evaluation (for GAM and XGBoost)
 
+```{r}
+# Accuracy measures of inflation and interest forecasting by ARIMA
+library(forecast)
 
+forecast::accuracy(object = as.numeric(pred_inflation$pred), x = inflation_test)
+errors <- inflation_test - pred_inflation$pred
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(inflation)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
 
+forecast::accuracy(object = as.numeric(pred_interest$pred), x = interest_test)
+errors <- interest_test - pred_interest$pred
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(interest)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+```
 
+```{r}
+# Accuracy measures of the fraud level forecasts by GAM
+forecast::accuracy(object = fraud_forecast_gam, x = fraud_test)
+errors <- fraud_test - fraud_forecast_gam
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(fraud)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+```
 
+```{r}
+# Accuracy measures of the fraud level forecasts by XGBoost
+forecast::accuracy(object = fraud_forecast_xgb, x = fraud_test)
+errors <- fraud_test - fraud_forecast_xgb
+MAE <- mean(abs(errors))
+scale <- mean(abs(diff(fraud)))
+MASE <- MAE / scale
+MASE
+ACF1 <- Acf(errors, plot = FALSE)$acf[2]
+ACF1
+```
 
+# Granger causality test
 
+```{r}
+#Create data frames.
+data_inf <- data.frame(
+  fraud,
+  inflation
+)
+data_u <- data.frame(
+  fraud = fraud[-1],
+  unemployment = diff(unemployment)
+)
+data_int <- data.frame(
+  fraud = fraud[-1],
+  interest = diff(interest)
+)
+data_p <- data.frame(
+  fraud = fraud[-1],
+  production = diff(production)
+)
+data_c <- data.frame(
+  fraud = fraud[-1],
+  confidence = diff(confidence)
+)
+```
 
+```{r}
+library(vars)
 
+VARselect(data_inf, lag.max = 30, type = "const")
+VARselect(data_u, lag.max = 30, type = "const")
+VARselect(data_int, lag.max = 30, type = "const")
+VARselect(data_p, lag.max = 30, type = "const")
+VARselect(data_c, lag.max = 30, type = "const")
+```
+
+```{r}
+causality(vars::VAR(data_inf, p = 1, type = "const"), cause = "inflation")
+causality(vars::VAR(data_inf, p = 4, type = "const"), cause = "inflation")
+causality(vars::VAR(data_inf, p = 13, type = "const"), cause = "inflation")
+causality(vars::VAR(data_inf, p = 25, type = "const"), cause = "inflation")
+```
+
+```{r}
+causality(vars::VAR(data_u, p = 2, type = "const"), cause = "unemployment")
+causality(vars::VAR(data_u, p = 4, type = "const"), cause = "unemployment")
+```
+
+```{r}
+causality(vars::VAR(data_int, p = 1, type = "const"), cause = "interest")
+causality(vars::VAR(data_int, p = 4, type = "const"), cause = "interest")
+```
+
+```{r}
+causality(vars::VAR(data_p, p = 1, type = "const"), cause = "production")
+causality(vars::VAR(data_p, p = 2, type = "const"), cause = "production")
+causality(vars::VAR(data_p, p = 4, type = "const"), cause = "production")
+```
+
+```{r}
+causality(vars::VAR(data_c, p = 1, type = "const"), cause = "confidence")
+causality(vars::VAR(data_c, p = 4, type = "const"), cause = "confidence")
+```
 
 
 
