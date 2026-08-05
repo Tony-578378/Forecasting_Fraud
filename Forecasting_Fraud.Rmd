@@ -37,7 +37,7 @@ fraud1 <- gu_content(query = '"fraud" AND ("UK" OR "United Kingdom")', from_date
 tibble::glimpse(fraud)
 ```
 
-# Inspect the contents:
+# Inspect the content:
 
 ```{r}
 table(fraud$type)
@@ -82,7 +82,7 @@ fraud %>%
 ```
 
 ```{r}
-#Collect only contents with type "article" and pillar name "Lifestyle"/"News"/"Opinion".
+#Collect only content with type "article" and pillar name "Lifestyle"/"News"/"Opinion", and inspect the first 20 articles.
 fraud %>%
   filter(type == "article" & pillar_name %in% c("Lifestyle","News","Opinion")) %>%
   select(web_title, web_publication_date) %>%
@@ -110,7 +110,7 @@ write.csv(monthly_fraud,
 ```
 
 ```{r}
-# Also for the tested contents.
+# Also for the test content.
 monthly_fraud1 <- fraud1 %>%
   filter(type == "article",
          pillar_name %in% c("Lifestyle", "News", "Opinion")) %>%
@@ -131,10 +131,12 @@ write.csv(monthly_fraud1,
 # Import the training dataset
 train <- read.csv("fraud&macroeconomic_train.csv")
 View(train)
+summary(train)
 
 # Import the testing dataset
 test <- read.csv("fraud&macroeconomic_test.csv")
 View(test)
+summary(test)
 
 #The volume of content fetched by the Guardian API may vary across time, so please subject to these two datasets in this project.
 ```
