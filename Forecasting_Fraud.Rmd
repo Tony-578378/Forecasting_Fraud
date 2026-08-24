@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## R Markdown
 
+# API data collection
+
 ```{r}
 #Install it if you haven't.
 library(guardianapi)
@@ -324,6 +326,7 @@ summary(gam8)
 ```{r}
 AIC(gam8)
 BIC(gam8)
+#gam8 is selected
 ```
 
 # Build Vector Autoregressive Moving Average models
@@ -716,6 +719,7 @@ MASE <- MAE / scale
 MASE
 ACF1 <- Acf(errors, plot = FALSE)$acf[2]
 ACF1
+#full10 (VAR(1) with all macroeconomic indicators as predictors) is selected, where its forecasts are in pred1
 ```
 
 # Build the Extreme Gradient Boosting model
@@ -789,7 +793,7 @@ xgb_model <- xgb.train(
 )
 ```
 
-# Forecasting
+# Forecasting (for GAM and XGBoost)
 
 ```{r}
 # Investigate whether there are seasonal patterns in the macroeconomic indicators that will be fitted in a univariate AR(I)MA or SAR(I)MA model.
@@ -1126,6 +1130,7 @@ data_c <- data.frame(
 ```
 
 ```{r}
+#Select the autoregressive order, p.
 library(vars)
 
 VARselect(data_inf, lag.max = 30, type = "const")
